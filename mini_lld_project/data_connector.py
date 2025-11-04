@@ -1,63 +1,76 @@
-import pandas as pd
-import sqlite3
 import os
-from datetime import datetime
-from tabulate import tabulate
-
-def  _display_df(df,title):
-    """Internal helper for consistent visualization."""
-    print("\n" + "="*80)
-    print(f"| {title.center(76)} |")
-    print("="*80)
-    if df.empty:
-        print("| {'DataFrame is empty.'.center(76)} |")
-    else:
-        print(tabulate(df.head(), headers='keys', tablefmt='fancy_grid', showindex=False))
-        print(f"--- Total Records: {len(df)} ---")
+import pandas as pd
+import logging
+import sqlite3 
 
 def load_source_data(file_path):
-    """Loads data from CSV, TXT, or SQLite based on extension."""
-    
-    print(f"\n[CONNECTOR] Attempting to load data from: {file_path}")
-    df = pd.DataFrame()
-    
+    """Loads data from a source file (CSV, TXT, or SQLite)."""
+    logging.info(f"Connecting to source: {file_path}")
+    if not os.path.exists(file_path):
+        logging.error(f"Source file not found: {file_path}")
+        return pd.DataFrame()
+        
     try:
-        if file_path.endswith('.csv') or file_path.endswith('.txt'):
-            # Handling CSV/TXT (assuming CSV format for simplicity)
-            df = pd.read_csv(file_path)
-            print(f"[SUCCESS] Loaded data from CSV/TXT.")
-            
-        elif file_path.endswith('.sqlite') or file_path.endswith('.db'):
-            # Handling SQLite
+        file_ext = os.path.splitext(file_path)[1].lower()
+        
+        if file_ext == '.db' or file_ext == '.sqlite':
             conn = sqlite3.connect(file_path)
-            # Prompt the user for the table name inside the SQLite file
-            table_name = input("Enter the table name inside the SQLite file: ")
-            df = pd.read_sql(f"SELECT * FROM {table_name}", conn)
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            tables = [row[0] for row in cursor.fetchall()]
+            if not tables:
+                logging.error("SQLite Database is empty: No tables found.")
+                conn.close()
+                return pd.DataFrame()
+            print("\nAvailable Tables in SQLite Database:")
+            for i, t in enumerate(tables):
+                print(f" {i+1}. {t}")
+            
+            table_name = ""
+            while table_name not in tables:
+                choice_inp = input("Enter table name or number to load: ").strip()
+                if choice_inp.isdigit():
+                    idx = int(choice_inp) - 1
+                    if 0 <= idx < len(tables):
+                        table_name = tables[idx]
+                    else:
+                        print("Invalid number. Try again.")
+                elif choice_inp in tables:
+                    table_name = choice_inp
+                else:
+                    print(f"Table '{choice_inp}' not found in the database. Try again.")
+
+            query = f"SELECT * FROM {table_name}"
+            df = pd.read_sql_query(query, conn) 
             conn.close()
-            print(f"[SUCCESS] Loaded data from SQLite table: {table_name}.")
+            logging.info(f"Loaded {len(df)} records from table: {table_name}")
+            return df
+            
+        elif file_ext in ('.csv', '.txt'):
+            try:
+                df = pd.read_csv(file_path, encoding='utf-8')
+            except UnicodeDecodeError:
+                df = pd.read_csv(file_path, encoding='latin1') 
+            return df
             
         else:
-            raise ValueError("Unsupported file type. Must be CSV, TXT, or SQLite.")
+            logging.error(f"Unsupported file type: {file_ext}. Only CSV, TXT, and SQLite are supported.")
+            return pd.DataFrame()
             
-        _display_df(df, f"EXTRACTION VISUAL: Raw Data from {os.path.basename(file_path)}")
-        return df
-        
     except Exception as e:
-        print(f"[ERROR] Failed to load data: {e}")
-        return None
+        logging.error(f"Error loading data from {file_path}: {e}")
+        return pd.DataFrame()
     
-def save_staging_data(df, stage_name="STAGING"):
-    """Saves the current DataFrame to a 'staging' CSV file (The Data Lake)."""
-    os.makedirs('staging', exist_ok=True)
-    stage_path = f'staging/{stage_name}_{datetime.now().strftime("%Y%m%d%H%M%S")}.csv'
-    df.to_csv(stage_path, index=False)
-    print(f"[LOAD SUCCESS] Data Staged: Saved {len(df)} rows to {stage_path}")
-    print("="*80)
+def save_staging_data(df, stage_name):
+    """Saves intermediate data to the staging area."""
+    os.makedirs('staging_data', exist_ok=True)
+    file_path = os.path.join('staging_data', f"{stage_name}.csv")
+    logging.info(f"Saving {len(df)} records to STAGING: {file_path}")
+    df.to_csv(file_path, index=False)
 
-def save_final_data(df, final_name="DIMENSION"):
-    """Saves the final DataFrame to a 'processed' CSV file (The Data Warehouse)."""
-    os.makedirs('processed', exist_ok=True)
-    final_path = f'processed/{final_name}_{datetime.now().strftime("%Y%m%d%H%M%S")}.csv'
-    df.to_csv(final_path, index=False)
-    print(f"\n[LOAD SUCCESS] Final Data Warehouse Load: Saved {len(df)} rows to {final_path}")
-    print("="*80)
+def save_final_data(df, final_name):
+    """Saves the final transformed data to the warehouse area."""
+    os.makedirs('data_warehouse', exist_ok=True)
+    file_path = os.path.join('data_warehouse', f"{final_name}_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv")
+    logging.info(f"Saving {len(df)} records to FINAL WAREHOUSE: {file_path}")
+    df.to_csv(file_path, index=False)
