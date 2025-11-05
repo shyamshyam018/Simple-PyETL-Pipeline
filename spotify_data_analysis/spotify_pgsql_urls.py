@@ -5,8 +5,8 @@ from spotipy.oauth2 import SpotifyClientCredentials
 import spotipy
 
 
-SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID", "850ed92fa6ba4f29909bd1ea7e64d66a")
-SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET", "7849147f75b449278f501f9c3f5f1b15")
+SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID", "XXXX")
+SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET", "XXXX")
 
 sp = spotipy.Spotify(
     auth_manager=SpotifyClientCredentials(
@@ -16,13 +16,13 @@ sp = spotipy.Spotify(
 )
 
 
-PG_HOST = os.getenv("PGHOST", "INGLXDB84")
-PG_PORT = int(os.getenv("PGPORT", "5432"))
-PG_DB   = os.getenv("PGDATABASE", "support")
-PG_USER = os.getenv("PGUSER", "c221100")
-PG_PASS = os.getenv("PGPASSWORD", "c221100")
-PG_SCHEMA = os.getenv("PGSCHEMA", "c221100")
-PG_SSLMODE = os.getenv("PGSSL", "disable") 
+PG_HOST = os.getenv("PGHOST", "XXXX")
+PG_PORT = int(os.getenv("PGPORT", "XXXX"))
+PG_DB   = os.getenv("PGDATABASE", "XXXX")
+PG_USER = os.getenv("PGUSER", "XXXX")
+PG_PASS = os.getenv("PGPASSWORD", "XXXX")
+PG_SCHEMA = os.getenv("PGSCHEMA", "XXXX")
+PG_SSLMODE = os.getenv("PGSSL", "XXXX") 
 
 conn = psycopg2.connect(
     host=PG_HOST,

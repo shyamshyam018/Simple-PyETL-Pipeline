@@ -6,8 +6,8 @@ import re
 
 
 sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
-    client_id='850ed92fa6ba4f29909bd1ea7e64d66a',  
-    client_secret='7849147f75b449278f501f9c3f5f1b15'
+    client_id='XXXX',  
+    client_secret='XXXX'
 ))
 
 
